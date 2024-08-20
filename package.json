@@ -47,6 +47,7 @@
   },
   "dependencies": {
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "thread-loader": "^4.0.2"
   }
 }
