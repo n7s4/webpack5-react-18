@@ -1,6 +1,7 @@
 import React from "react";
 import "./app.css";
+import ThemeContext from "./components/context/ThemeContext";
 const App = () => {
-  return <h2>webpack5-react-ts1</h2>;
+  return <ThemeContext />;
 };
 export default App;
