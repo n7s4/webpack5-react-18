@@ -24,13 +24,7 @@ module.exports = {
       },
       {
         test: /.(ts|tsx)$/, // 匹配.ts, tsx文件
-        use: {
-          loader: "babel-loader",
-          options: {
-            // 预设执行顺序由右往左,所以先处理ts,再处理jsx
-            presets: ["@babel/preset-react", "@babel/preset-typescript"],
-          },
-        },
+        use: ["thread-loader", "babel-loader"],
       },
       {
         test: /.(css|scss)$/, //匹配 css 文件
@@ -76,6 +70,9 @@ module.exports = {
   },
   resolve: {
     extensions: [".js", ".tsx", ".ts"],
+    alias: {
+      "@": path.join(__dirname, "../src"),
+    },
   },
   plugins: [
     new HtmlWebpackPlugin({
@@ -86,6 +83,9 @@ module.exports = {
       "process.env.BASE_ENV": JSON.stringify(process.env.BASE_ENV),
     }),
   ],
+  cache: {
+    type: "filesystem", // 使用文件缓存
+  },
 };
 console.log("NODE_ENV", process.env.NODE_ENV);
 console.log("BASE_ENV", process.env.BASE_ENV);
