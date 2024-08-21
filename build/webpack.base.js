@@ -1,17 +1,24 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const webpack = require("webpack");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const isDev = process.env.NODE_ENV === "development"; // 是否是开发模式
 
 module.exports = {
   entry: path.join(__dirname, "../src/index.tsx"), // 入口文件
   output: {
     path: path.join(__dirname, "../dist"), // 打包出口
-    filename: "static/js/[name].js", // 打包后的文件名
     clean: true, // webpack4需要配置clean-webpack-plugin来删除dist文件,webpack5内置了
     publicPath: "/", // 打包后文件的公共前缀路径
+    filename: "static/js/[name].[chunkhash:8].js", //打包后的文件名 // 加上[chunkhash:8]
   },
   module: {
     rules: [
+      {
+        include: [path.resolve(__dirname, "../src")], //只对项目src文件的ts,tsx进行loader解析
+        test: /.(ts|tsx)$/,
+        use: ["thread-loader", "babel-loader"],
+      },
       {
         test: /\.js$/,
         exclude: /node_modules/,
@@ -23,12 +30,33 @@ module.exports = {
         },
       },
       {
-        test: /.(ts|tsx)$/, // 匹配.ts, tsx文件
-        use: ["thread-loader", "babel-loader"],
+        test: /.css$/, //匹配所有的 css 文件
+        include: [path.resolve(__dirname, "../src")],
+        use: [
+          isDev ? "style-loader" : MiniCssExtractPlugin.loader, // 开发环境使用style-looader,打包模式抽离css
+          "css-loader",
+          "postcss-loader",
+        ],
       },
       {
-        test: /.(css|scss)$/, //匹配 css 文件
-        use: ["style-loader", "css-loader", "postcss-loader", "less-loader"],
+        test: /.less$/, //匹配所有的 less 文件
+        include: [path.resolve(__dirname, "../src")],
+        use: [
+          isDev ? "style-loader" : MiniCssExtractPlugin.loader, // 开发环境使用style-looader,打包模式抽离css
+          "css-loader",
+          "postcss-loader",
+          "less-loader",
+        ],
+      },
+      {
+        test: /.scss$/, //匹配所有的 scss 文件
+        include: [path.resolve(__dirname, "../src")],
+        use: [
+          isDev ? "style-loader" : MiniCssExtractPlugin.loader, // 开发环境使用style-looader,打包模式抽离css
+          "css-loader",
+          "postcss-loader",
+          "scss-loader",
+        ],
       },
       {
         test: /.(png|jpg|jpeg|gif|svg)$/, // 匹配图片文件
@@ -39,7 +67,7 @@ module.exports = {
           },
         },
         generator: {
-          filename: "static/images/[name][ext]", // 文件输出目录和命名
+          filename: "static/images/[name].[contenthash:8][ext]", // 加上[contenthash:8]
         },
       },
       {
@@ -51,7 +79,7 @@ module.exports = {
           },
         },
         generator: {
-          filename: "static/fonts/[name][ext]", // 文件输出目录和命名
+          filename: "static/fonts/[name].[contenthash:8][ext]", // 文件输出目录和命名
         },
       },
       {
@@ -63,7 +91,7 @@ module.exports = {
           },
         },
         generator: {
-          filename: "static/media/[name][ext]", // 文件输出目录和命名
+          filename: "static/media/[name].[contenthash:8][ext]", // 文件输出目录和命名
         },
       },
     ],
@@ -73,6 +101,7 @@ module.exports = {
     alias: {
       "@": path.join(__dirname, "../src"),
     },
+    // modules: [path.resolve(__dirname, "../node_modules")], // 查找第三方模块只在本项目的node_modules中查找
   },
   plugins: [
     new HtmlWebpackPlugin({

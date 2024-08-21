@@ -1012,3 +1012,551 @@ module.export = {
 - **exclude**：不解该选项配置的模块,优先级更高
 
 修改**webpack.base.js**
+
+```js
+// webpack.base.js
+const path = require('path')
+module.exports = {
+  // ...
+  module: {
+    rules: [
+      {
+        include: [path.resolve(__dirname, '../src')], 只对项目src文件的ts,tsx进行loader解析
+        test: /.(ts|tsx)$/,
+        use: ['thread-loader', 'babel-loader']
+      }
+    ]
+  }
+}
+```
+
+其他**loader**也是相同的配置方式,如果除**src**文件外也还有需要解析的,就把对应的目录地址加上就可以了,比如需要引入**antd**的**css**,可以把**antd**的文件目录路径添加解析**css**规则到**include**里面。
+
+## 精确使用 loader
+
+**loader**在**webpack**构建过程中使用的位置是在**webpack**构建模块依赖关系引入新文件时，会根据文件后缀来倒序遍历**rules**数组，如果文件后缀和**test**正则匹配到了，就会使用该**rule**中配置的**loader**依次对文件源代码进行处理，最终拿到处理后的**sourceCode**结果，可以通过避免使用无用的**loader**解析来提升构建速度，比如使用**less-loader**解析**css**文件。
+
+可以拆分上面配置的**less**和**css**, 避免让**less-loader**再去解析**css**文件
+
+```js
+// webpack.base.js
+// ...
+module.exports = {
+  module: {
+    // ...
+    rules: [
+      // ...
+      {
+        test: /.css$/, //匹配所有的 css 文件
+        include: [path.resolve(__dirname, "../src")],
+        use: ["style-loader", "css-loader", "postcss-loader"],
+      },
+      {
+        test: /.less$/, //匹配所有的 less 文件
+        include: [path.resolve(__dirname, "../src")],
+        use: ["style-loader", "css-loader", "postcss-loader", "less-loader"],
+      },
+    ],
+  },
+};
+```
+
+**ts**和**tsx**也是如此，**ts**里面是不能写**jsx**语法的，所以可以尽可能避免使用 **@babel/preset-react**对 **.ts** 文件语法做处理。
+
+## 缩小模块搜索范围
+
+**node**里面模块有三种
+
+- **node**核心模块
+- **node_modules**模块
+- 自定义文件模块
+
+使用**require**和**import**引入模块时如果有准确的相对或者绝对路径,就会去按路径查询,如果引入的模块没有路径,会优先查询**node**核心模块,如果没有找到会去当前目录下**node_modules**中寻找,如果没有找到会查从父级文件夹查找**node_modules**,一直查到系统**node**全局模块。
+
+这样会有两个问题,一个是当前项目没有安装某个依赖,但是上一级目录下**node_modules**或者全局模块有安装,就也会引入成功,但是部署到服务器时可能就会找不到造成报错,另一个问题就是一级一级查询比较消耗时间。可以告诉**webpack**搜索目录范围,来规避这两个问题。
+
+修改**webpack.base.js**
+
+```js
+// webpack.base.js
+const path = require("path");
+module.exports = {
+  // ...
+  resolve: {
+    // ...
+    modules: [path.resolve(__dirname, "../node_modules")], // 查找第三方模块只在本项目的node_modules中查找
+  },
+};
+```
+
+## devtool 配置
+
+开发过程中或者打包后的代码都是**webpack**处理后的代码,如果进行调试肯定希望看到源代码,而不是编译后的代码, [source map](http://blog.teamtreehouse.com/introduction-source-maps)就是用来做源码映射的,不同的映射模式会明显影响到构建和重新构建的速度, [**devtool**](https://webpack.js.org/configuration/devtool/)选项就是**webpack**提供的选择源码映射方式的配置。
+
+**devtool**的命名规则为 **^(inline-|hidden-|eval-)?(nosources-)?(cheap-(module-)?)?source-map$**
+
+| 关键字    | 描述                                                     |
+| --------- | -------------------------------------------------------- |
+| inline    | 代码内通过 dataUrl 形式引入 SourceMap                    |
+| hidden    | 生成 SourceMap 文件,但不使用                             |
+| eval      | `eval(...)` 形式执行代码,通过 dataUrl 形式引入 SourceMap |
+| nosources | 不生成 SourceMap                                         |
+| cheap     | 只需要定位到行信息,不需要列信息                          |
+| module    | 展示源代码中的错误位置                                   |
+
+开发环境推荐：**eval-cheap-module-source-map**
+
+- 本地开发首次打包慢点没关系,因为 **eval** 缓存的原因, 热更新会很快
+- 开发中,我们每行代码不会写的太长,只需要定位到行就行,所以加上 **cheap**
+- 我们希望能够找到源代码的错误,而不是打包后的,所以需要加上 **module**
+
+修改**webpack.dev.js**
+
+```js
+// webpack.dev.js
+module.exports = {
+  // ...
+  devtool: "eval-cheap-module-source-map",
+};
+```
+
+打包环境推荐：**none**(就是不配置**devtool**选项了，不是配置**devtool**: '**none**')
+
+```js
+// webpack.prod.js
+module.exports = {
+  // ...
+  // devtool: '', // 不用配置devtool此项
+};
+```
+
+- **none**话调试只能看到编译后的代码,也不会泄露源代码,打包速度也会比较快。
+- 只是不方便线上排查问题, 但一般都可以根据报错信息在本地环境很快找出问题所在。
+
+## 其他优化配置
+
+除了上面的配置外，**webpack**还提供了其他的一些优化方式,本次搭建没有使用到，所以只简单罗列下
+
+- [**externals**](https://www.webpackjs.com/configuration/externals/): 外包拓展，打包时会忽略配置的依赖，会从上下文中寻找对应变量
+- [**module.noParse**](https://www.webpackjs.com/configuration/module/#module-noparse): 匹配到设置的模块,将不进行依赖解析，适合**jquery**,**boostrap**这类不依赖外部模块的包
+- [**ignorePlugin**](https://webpack.js.org/plugins/ignore-plugin/#root): 可以使用正则忽略一部分文件，常在使用多语言的包时可以把非中文语言包过滤掉
+
+# 优化构建结果文件
+
+## webpack 包分析工具
+
+[webpack-bundle-analyzer](https://www.npmjs.com/package/webpack-bundle-analyzer)是分析**webpack**打包后文件的插件,使用交互式可缩放树形图可视化 **webpack** 输出文件的大小。通过该插件可以对打包后的文件进行观察和分析,可以方便我们对不完美的地方针对性的优化,安装依赖：
+
+`pnpm install webpack-bundle-analyzer -D`
+
+修改**webpack.analy.js**
+
+```js
+// webpack.analy.js
+const prodConfig = require("./webpack.prod.js");
+const SpeedMeasurePlugin = require("speed-measure-webpack-plugin");
+const smp = new SpeedMeasurePlugin();
+const { merge } = require("webpack-merge");
+const { BundleAnalyzerPlugin } = require("webpack-bundle-analyzer"); // 引入分析打包结果插件
+module.exports = smp.wrap(
+  merge(prodConfig, {
+    plugins: [
+      new BundleAnalyzerPlugin(), // 配置分析打包结果插件
+    ],
+  })
+);
+```
+
+配置好后,执行**npm run build:analy**命令,打包完成后浏览器会自动打开窗口,可以看到打包文件的分析结果页面,可以看到各个文件所占的资源大小。
+
+## 抽取 css 样式文件
+
+在开发环境我们希望**css**嵌入在**style**标签里面,方便样式热替换,但打包时我们希望把**css**单独抽离出来,方便配置缓存策略。而插件[mini-css-extract-plugin](https://github.com/webpack-contrib/mini-css-extract-plugin)就是来帮我们做这件事的,安装依赖
+
+`pnpm i mini-css-extract-plugin -D`
+
+修改**webpack.base.js**, 根据环境变量设置开发环境使用**style-looader**,打包模式抽离**css**
+
+```js
+// webpack.base.js
+// ...
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const isDev = process.env.NODE_ENV === "development"; // 是否是开发模式
+module.exports = {
+  // ...
+  module: {
+    rules: [
+      // ...
+      {
+        test: /.css$/, //匹配所有的 css 文件
+        include: [path.resolve(__dirname, "../src")],
+        use: [
+          isDev ? "style-loader" : MiniCssExtractPlugin.loader, // 开发环境使用style-looader,打包模式抽离css
+          "css-loader",
+          "postcss-loader",
+        ],
+      },
+      {
+        test: /.less$/, //匹配所有的 less 文件
+        include: [path.resolve(__dirname, "../src")],
+        use: [
+          isDev ? "style-loader" : MiniCssExtractPlugin.loader, // 开发环境使用style-looader,打包模式抽离css
+          "css-loader",
+          "postcss-loader",
+          "less-loader",
+        ],
+      },
+    ],
+  },
+  // ...
+};
+```
+
+再修改**webpack.prod.js**, 打包时添加抽离 css 插件
+
+```js
+// webpack.prod.js
+// ...
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+module.exports = merge(baseConfig, {
+  mode: "production",
+  plugins: [
+    // ...
+    // 抽离css插件
+    new MiniCssExtractPlugin({
+      filename: "static/css/[name].css", // 抽离css的输出目录和名称
+    }),
+  ],
+});
+```
+
+配置完成后,在开发模式**css**会嵌入到**style**标签里面,方便样式热替换,打包时会把**css**抽离成单独的**css**文件。
+
+## 压缩 css 文件
+
+上面配置了打包时把**css**抽离为单独**css**文件的配置,打开打包后的文件查看,可以看到默认**css**是没有压缩的,需要手动配置一下压缩**css**的插件。
+
+可以借助[css-minimizer-webpack-plugin](https://link.juejin.cn/?target=https%3A%2F%2Fwww.npmjs.com%2Fpackage%2Fcss-minimizer-webpack-plugin)来压缩 css,安装依赖
+
+`pnpm install css-minimizer-webpack-plugin -D`
+
+```js
+// webpack.prod.js
+// ...
+const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
+module.exports = {
+  // ...
+  optimization: {
+    minimizer: [
+      new CssMinimizerPlugin(), // 压缩css
+    ],
+  },
+};
+```
+
+再次执行打包就可以看到**css**已经被压缩了。
+
+## 压缩 js 文件
+
+设置**mode**为**production**时,**webpack**会使用内置插件[terser-webpack-plugin](https://www.npmjs.com/package/terser-webpack-plugin)压缩**js**文件,该插件默认支持多线程压缩,但是上面配置**optimization.minimizer**压缩**css**后,**js**压缩就失效了,需要手动再添加一下,**webpack**内部安装了该插件,由于**pnpm**解决了幽灵依赖问题,如果用的**pnpm**的话,需要手动再安装一下依赖。
+
+`pnpm i terser-webpack-plugin -D`
+
+修改**webpack.prod.js**文件
+
+```js
+// ...
+const TerserPlugin = require("terser-webpack-plugin");
+module.exports = {
+  // ...
+  optimization: {
+    minimizer: [
+      // ...
+      new TerserPlugin({
+        // 压缩js
+        parallel: true, // 开启多线程压缩
+        terserOptions: {
+          compress: {
+            pure_funcs: ["console.log"], // 删除console.log
+          },
+        },
+      }),
+    ],
+  },
+};
+```
+
+配置完成后再打包,**css**和**js**就都可以被压缩了。
+
+## 合理配置打包文件 hash
+
+项目维护的时候,一般只会修改一部分代码,可以合理配置文件缓存,来提升前端加载页面速度和减少服务器压力,而**hash**就是浏览器缓存策略很重要的一部分。**webpack**打包的**hash**分三种
+
+- **hash**：跟整个项目的构建相关,只要项目里有文件更改,整个项目构建的**hash**值都会更改,并且全部文件都共用相同的**hash**值
+- **chunkhash**：不同的入口文件进行依赖文件解析、构建对应的**chunk**,生成对应的哈希值,文件本身修改或者依赖文件修改,**chunkhash**值会变化
+- **contenthash**：每个文件自己单独的 **hash** 值,文件的改动只会影响自身的 **hash** 值
+
+**hash**是在输出文件时配置的,格式是**filename: "[name].\[chunkhash:8][ext]"**,**[xx]** 格式是**webpack**提供的占位符, **:8**是生成**hash**的长度。
+
+| 占位符      | 解释                       |
+| ----------- | -------------------------- |
+| ext         | 文件后缀名                 |
+| name        | 文件名                     |
+| path        | 文件相对路径               |
+| folder      | 文件所在文件夹             |
+| hash        | 每次构建生成的唯一 hash 值 |
+| chunkhash   | 根据 chunk 生成 hash 值    |
+| contenthash | 根据文件内容生成 hash 值   |
+
+因为**js**我们在生产环境里会把一些公共库和程序入口文件区分开,单独打包构建,采用**chunkhash**的方式生成哈希值,那么只要我们不改动公共库的代码,就可以保证其哈希值不会受影响,可以继续使用浏览器缓存,所以**js**适合使用**chunkhash**。
+
+**css**和图片资源媒体资源一般都是单独存在的,可以采用**contenthash**,只有文件本身变化后会生成新**hash**值。
+
+修改**webpack.base.js**,把**js**输出的文件名称格式加上**chunkhash**,把**css**和图片媒体资源输出格式加上**contenthash**
+
+```js
+// webpack.base.js
+// ...
+module.exports = {
+  // 打包文件出口
+  output: {
+    filename: "static/js/[name].[chunkhash:8].js", // // 加上[chunkhash:8]
+    // ...
+  },
+  module: {
+    rules: [
+      {
+        test: /.(png|jpg|jpeg|gif|svg)$/, // 匹配图片文件
+        // ...
+        generator: {
+          filename: "static/images/[name].[contenthash:8][ext]", // 加上[contenthash:8]
+        },
+      },
+      {
+        test: /.(woff2?|eot|ttf|otf)$/, // 匹配字体文件
+        // ...
+        generator: {
+          filename: "static/fonts/[name].[contenthash:8][ext]", // 加上[contenthash:8]
+        },
+      },
+      {
+        test: /.(mp4|webm|ogg|mp3|wav|flac|aac)$/, // 匹配媒体文件
+        // ...
+        generator: {
+          filename: "static/media/[name].[contenthash:8][ext]", // 加上[contenthash:8]
+        },
+      },
+    ],
+  },
+  // ...
+};
+```
+
+再修改**webpack.prod.js**,修改抽离**css**文件名称格式
+
+```js
+// webpack.prod.js
+// ...
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+module.exports = merge(baseConfig, {
+  mode: "production",
+  plugins: [
+    // 抽离css插件
+    new MiniCssExtractPlugin({
+      filename: "static/css/[name].[contenthash:8].css", // 加上[contenthash:8]
+    }),
+    // ...
+  ],
+  // ...
+});
+```
+
+再次打包就可以看到文件后面的**hash**了
+
+## 代码分割第三方包和公共模块
+
+一般第三方包的代码变化频率比较小,可以单独把**node_modules**中的代码单独打包, 当第三包代码没变化时,对应**chunkhash**值也不会变化,可以有效利用浏览器缓存，还有公共的模块也可以提取出来,避免重复打包加大代码整体体积, **webpack**提供了代码分隔功能, 需要我们手动在优化项[optimization](https://webpack.js.org/configuration/optimization/)中手动配置下代码分隔[splitChunks](https://webpack.js.org/configuration/optimization/#optimizationsplitchunks)规则。
+
+修改**webpack.prod.js**
+
+```js
+module.exports = {
+  // ...
+  optimization: {
+    // ...
+    splitChunks: {
+      // 分隔代码
+      cacheGroups: {
+        vendors: {
+          // 提取node_modules代码
+          test: /node_modules/, // 只匹配node_modules里面的模块
+          name: "vendors", // 提取文件命名为vendors,js后缀和chunkhash会自动加
+          minChunks: 1, // 只要使用一次就提取出来
+          chunks: "initial", // 只提取初始化就能获取到的模块,不管异步的
+          minSize: 0, // 提取代码体积大于0就提取出来
+          priority: 1, // 提取优先级为1
+        },
+        commons: {
+          // 提取页面公共代码
+          name: "commons", // 提取文件命名为commons
+          minChunks: 2, // 只要使用两次就提取出来
+          chunks: "initial", // 只提取初始化就能获取到的模块,不管异步的
+          minSize: 0, // 提取代码体积大于0就提取出来
+        },
+      },
+    },
+  },
+};
+```
+
+配置完成后执行打包,可以看到**node_modules**里面的模块被抽离到**verdors.ec725ef1.js**中,业务代码在**main.9a6bf38a.js**中。
+
+## tree-shaking 清理未引用 js
+
+[Tree Shaking](https://link.juejin.cn/?target=https%3A%2F%2Fwebpack.docschina.org%2Fguides%2Ftree-shaking%2F)的意思就是摇树,伴随着摇树这个动作,树上的枯叶都会被摇晃下来,这里的**tree-shaking**在代码中摇掉的是未使用到的代码,也就是未引用的代码,最早是在**rollup**库中出现的,**webpack**在**2**版本之后也开始支持。模式**mode**为**production**时就会默认开启**tree-shaking**功能以此来标记未引入代码然后移除掉,测试一下。
+
+在**src/components**目录下新增**Demo1**,**Demo2**两个组件
+
+```tsx
+// src/components/Demo1.tsx
+import React from "react";
+function Demo1() {
+  return <h3>我是Demo1组件</h3>;
+}
+export default Demo1;
+
+// src/components/Demo2.tsx
+import React from "react";
+function Demo2() {
+  return <h3>我是Demo2组件</h3>;
+}
+export default Demo2;
+```
+
+再在**src/components**目录下新增**index.ts**, 把**Demo1**和**Demo2**组件引入进来再暴露出去
+
+```ts
+// src/components/index.ts
+export { default as Demo1 } from "./Demo1";
+export { default as Demo2 } from "./Demo2";
+```
+
+在**App.tsx**中引入两个组件,但只使用**Demo1**组件
+
+```tsx
+// ...
+import { Demo1, Demo2 } from "@/components";
+
+function App() {
+  return <Demo1 />;
+}
+export default App;
+```
+
+执行打包,可以看到在**main.js**中搜索**Demo**,只搜索到了**Demo1**, 代表**Demo2**组件被**tree-shaking**移除掉了。
+
+## tree-shaking 清理未使用 css
+
+**js**中会有未使用到的代码,**css**中也会有未被页面使用到的样式,可以通过[purgecss-webpack-plugin](https://www.npmjs.com/package/purgecss-webpack-plugin)插件打包的时候移除未使用到的**css**样式,这个插件是和[mini-css-extract-plugin](https://www.npmjs.com/package/mini-css-extract-plugin)插件配合使用的,在上面已经安装过,还需要[**glob-all**](https://www.npmjs.com/package/glob-all)来选择要检测哪些文件里面的类名和**id**还有标签名称, 安装依赖:
+
+`pnpm i purgecss-webpack-plugin glob-all -D`
+
+修改**webpack.prod.js**
+
+```js
+// webpack.prod.js
+// ...
+const globAll = require("glob-all");
+const PurgeCSSPlugin = require("purgecss-webpack-plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+module.exports = {
+  // ...
+  plugins: [
+    // 抽离css插件
+    new MiniCssExtractPlugin({
+      filename: "static/css/[name].[contenthash:8].css",
+    }),
+    // 清理无用css
+    new PurgeCSSPlugin({
+      // 检测src下所有tsx文件和public下index.html中使用的类名和id和标签名称
+      // 只打包这些文件中用到的样式
+      paths: globAll.sync([
+        `${path.join(__dirname, "../src")}/**/*.tsx`,
+        path.join(__dirname, "../public/index.html"),
+      ]),
+    }),
+  ],
+};
+```
+
+## 资源懒加载
+
+像**react**,**vue**等单页应用打包默认会打包到一个**js**文件中,虽然使用代码分割可以把**node_modules**模块和**公共模块**分离,但页面初始加载还是会把整个项目的代码下载下来,其实只需要公共资源和当前页面的资源就可以了,其他页面资源可以等使用到的时候再加载,可以有效提升首屏加载速度。
+
+**webpack**默认支持资源懒加载,只需要引入资源使用**import**语法来引入资源,**webpack**打包的时候就会自动打包为单独的资源文件,等使用到的时候动态加载。
+
+## 资源预加载
+
+上面配置了资源懒加载后,虽然提升了首屏渲染速度,但是加载到资源的时候会有一个去请求资源的延时,如果资源比较大会出现延迟卡顿现象,可以借助**link**标签的**rel**属性**prefetch**与**preload**,**link**标签除了加载**css**之外也可以加载**js**资源,设置**rel**属性可以规定**link**提前加载资源,但是加载资源后不执行,等用到了再执行。
+
+**rel 的属性值**
+
+- **preload**是告诉浏览器页面必定需要的资源,浏览器一定会加载这些资源。
+- **prefetch**是告诉浏览器页面可能需要的资源,浏览器不一定会加载这些资源,会在空闲时加载。
+
+对于当前页面很有必要的资源使用 **preload** ,对于可能在将来的页面中使用的资源使用 **prefetch**。
+
+**webpack v4.6.0+** 增加了对[预获取和预加载](https://webpack.docschina.org/guides/code-splitting/#prefetchingpreloading-modules)的支持,使用方式也比较简单,在**import**引入动态资源时使用**webpack**的魔法注释
+
+```js
+// 单个目标
+import(
+  /* webpackChunkName: "my-chunk-name" */ // 资源打包后的文件chunkname
+  /* webpackPrefetch: true */ // 开启prefetch预获取
+  /* webpackPreload: true */ // 开启preload预获取
+  "./module"
+);
+```
+
+## 打包时生成 gzip 文件
+
+前端代码在浏览器运行,需要从服务器把**html**,**css**,**js**资源下载执行,下载的资源体积越小,页面加载速度就会越快。一般会采用**gzip**压缩,现在大部分浏览器和服务器都支持**gzip**,可以有效减少静态资源文件大小,压缩率在 **70%** 左右。
+
+**nginx**可以配置**gzip: on**来开启压缩,但是只在**nginx**层面开启,会在每次请求资源时都对资源进行压缩,压缩文件会需要时间和占用服务器**cpu**资源，更好的方式是前端在打包的时候直接生成**gzip**资源,服务器接收到请求,可以直接把对应压缩好的**gzip**文件返回给浏览器,节省时间和**cpu**。
+
+**webpack**可以借助[compression-webpack-plugin](https://www.npmjs.com/package/compression-webpack-plugin) 插件在打包时生成 **gzip** 文章,安装依赖
+
+`pnpm i compression-webpack-plugin -D`
+
+添加配置,修改**webpack.prod.js**
+
+```js
+const glob = require("glob");
+const CompressionPlugin = require("compression-webpack-plugin");
+module.exports = {
+  // ...
+  plugins: [
+    // ...
+    new CompressionPlugin({
+      test: /.(js|css)$/, // 只生成css,js压缩文件
+      filename: "[path][base].gz", // 文件命名
+      algorithm: "gzip", // 压缩格式,默认是gzip
+      test: /.(js|css)$/, // 只生成css,js压缩文件
+      threshold: 10240, // 只有大小大于该值的资源会被处理。默认值是 10k
+      minRatio: 0.8, // 压缩率,默认值是 0.8
+    }),
+  ],
+};
+```
+
+配置完成后再打包,可以看到打包后 js 的目录下多了一个 **.gz** 结尾的文件
+
+# 参考
+
+1.  [webpack 官网](https://www.webpackjs.com/)
+2.  [babel 官网](https://www.babeljs.cn/)
+3.  [【万字】透过分析 webpack 面试题，构建 webpack5.x 知识体系](https://juejin.cn/post/7023242274876162084)
+4.  [Babel 那些事儿](https://juejin.cn/post/6992371845349507108)
+5.  [阔别两年，webpack 5 正式发布了！](https://juejin.cn/post/6882663278712094727)
+6.  [webpack 从入门到进阶](https://www.bilibili.com/video/BV1Pf4y157Ni?p=1)
+7.  [webpack5 + react18](https://github.com/guojiongwei/webpack5-react-ts)
