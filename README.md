@@ -916,3 +916,99 @@ module.exports = smp.wrap(merge(prodConfig, {}));
 ```
 
 执行 npm run build:analy 命令
+
+![微信截图_20220615110031.png](https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/52ed97e61f94427c8bf3ed833a3957f0~tplv-k3u1fbpfcp-watermark.image?)
+
+可以在图中看到各**plugin**和**loader**的耗时时间,现在因为项目内容比较少,所以耗时都比较少,在真正的项目中可以通过这个来分析打包时间花费在什么地方,然后来针对性的优化
+
+## 开启持久化存储缓存
+
+在**webpack5**之前做缓存是使用**babel-loader**缓存解决**js**的解析结果,**cache-loader**缓存**css**等资源的解析结果,还有模块缓存插件**hard-source-webpack-plugin**,配置好缓存后第二次打包,通过对文件做哈希对比来验证文件前后是否一致,如果一致则采用上一次的缓存,可以极大地节省时间。
+
+**webpack5** 较于 **webpack4**,新增了持久化缓存、改进缓存算法等优化,通过配置 webpack 持久化缓存,来缓存生成的 **webpack** 模块和 **chunk**,改善下一次打包的构建速度,可提速 **90%** 左右,配置也简单，修改**webpack.base.js**
+
+```javascript
+// webpack.base.js
+// ...
+module.exports = {
+  // ...
+  cache: {
+    type: "filesystem", // 使用文件缓存
+  },
+};
+```
+
+可以看出来，第一次耗时 9222ms, 第二次耗时 415ms
+![alt text](image.png)
+缓存的存储位置在**node_modules/.cache/webpack**,里面又区分了**development**和**production**缓存
+
+## 开启多线程 loader
+
+**webpack**的**loader**默认在单线程执行,现代电脑一般都有多核**cpu**,可以借助多核**cpu**开启多线程**loader**解析,可以极大地提升**loader**解析的速度,[thread-loader](https://link.juejin.cn/?target=https%3A%2F%2Fwebpack.docschina.org%2Floaders%2Fthread-loader%2F%23root)就是用来开启多进程解析**loader**的,安装依赖
+
+`pnpm i thread-loader -D`
+
+使用时,需将此 **loader** 放置在其他 **loader** 之前。放置在此 **loader** 之后的 **loader** 会在一个独立的 **worker** 池中运行。
+
+修改**webpack.base.js**
+
+```javascript
+// webpack.base.js
+module.exports = {
+  // ...
+  module: {
+    rules: [
+      {
+        test: /.(ts|tsx)$/,
+        use: ["thread-loader", "babel-loader"],
+      },
+    ],
+  },
+};
+```
+
+由于**thread-loader**不支持抽离 css 插件**MiniCssExtractPlugin.loader**(下面会讲),所以这里只配置了多进程解析**js**,开启多线程也是需要启动时间,大约**600ms**左右,所以适合规模比较大的项目。
+
+## 配置 alias 别名
+
+**webpack**支持设置别名**alias**,设置别名可以让后续引用的地方减少路径的复杂度。
+修改**webpack.base.js**
+
+```js
+module.export = {
+  // ...
+  resolve: {
+    // ...
+    alias: {
+      "@": path.join(__dirname, "../src"),
+    },
+  },
+};
+```
+
+修改**tsconfig.json**,添加**baseUrl**和**paths**
+
+```js
+{
+  "compilerOptions": {
+    // ...
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
+    }
+  }
+}
+```
+
+配置修改完成后,在项目中使用 **@/xxx.xx**,就会指向项目中**src/xxx.xx,**在**js/ts**文件和**css**文件中都可以用。\
+
+## 缩小 loader 作用范围
+
+一般第三库都是已经处理好的,不需要再次使用**loader**去解析,可以按照实际情况合理配置**loader**的作用范围,来减少不必要的**loader**解析,节省时间,通过使用 **include**和**exclude** 两个配置项,可以实现这个功能,常见的例如：
+
+- **include**：只解析该选项配置的模块
+- **exclude**：不解该选项配置的模块,优先级更高
+
+修改**webpack.base.js**
