@@ -4,29 +4,30 @@ import ThemeContext from "./components/example/ThemeContext";
 import UseFefs from "@/components/example/useRefs";
 import Effect from "@/components/example/Effect";
 
-const FuncEffect: React.FC = () => {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    console.log("first componentDidMount");
-  }, []);
-  useEffect(() => {
-    console.log("依赖项发生变化，执行副作用函数");
-  }, [count]);
-  useEffect(() => {
-    return () => {
-      console.log("组件卸载");
-    };
-  });
-  const handleClick = () => {
-    setCount(count + 1);
-  };
-  return (
-    <div>
-      <h1>{count}</h1>
-      <button onClick={handleClick}>增加</button>
-    </div>
-  );
-};
+// const FuncEffect: React.FC = () => {
+//   const [count, setCount] = useState(0);
+//   useEffect(() => {
+//     console.log("first componentDidMount");
+//   }, []);
+//   useEffect(() => {
+//     console.log("依赖项发生变化，执行副作用函数");
+//   }, [count]);
+//   useEffect(() => {
+//     return () => {
+//       console.log("组件卸载");
+//     };
+//   });
+//   const handleClick = () => {
+//     setCount(count + 1);
+//   };
+//   return (
+//     <div>
+//       <h1>{count}</h1>
+//       <button onClick={handleClick}>增加</button>
+//     </div>
+//   );
+// };
+
 const App: React.FC = () => {
   const [isVisible, steIsVisible] = useState(true);
   // return <ThemeContext />;
@@ -40,6 +41,7 @@ const App: React.FC = () => {
   //     {isVisible && <FuncEffect />}
   //   </div>
   // );
+  // return <FuncEffect />;
 };
 
 // 发布订阅模型
