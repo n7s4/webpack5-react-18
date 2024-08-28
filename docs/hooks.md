@@ -50,4 +50,31 @@ const FuncEffect: React.FC = () => {
 };
 ```
 
-上面例子中，组件点击左右按钮会执行 useEffect 中的回调函数，并更新组件的 title，是因为改变了 state 的值，所以会触发组件的重新渲染，然后执行 useEffect 中的回调函数，更新 title。、
+上面例子中，组件点击左右按钮会执行 useEffect 中的回调函数，并更新组件的 title，是因为改变了 state 的值，所以会触发组件的重新渲染，然后执行 useEffect 中的回调函数，更新 title。
+
+## useRef
+
+如何让useEffect让组件更新时才执行?
+通过useRef来保存一个值，然后通过useEffect来判断这个值是否改变，如果改变了，则执行回调函数。
+
+```javascript
+import React, {useEffect, useRef, useState} from 'react'
+const app = () => {
+  const [count, setCount] = useState(0)
+  const Ref = useRef(null)
+  useEffect(() => {
+    if(!Ref.current.flag) {
+      Ref.current.flag = true
+    } else {
+      console.log('组件更新了')
+    }
+  },[count])
+  return (
+    <>
+      <div ref="Ref">{count}</div>
+      <button onClick={() => setCount(count + 1)}></button>
+    </>
+  )
+}
+export default app
+```

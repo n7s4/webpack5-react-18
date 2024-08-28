@@ -3,6 +3,7 @@ import "./app.css";
 import ThemeContext from "./components/example/ThemeContext";
 import UseFefs from "@/components/example/useRefs";
 import Effect from "@/components/example/Effect";
+import View from "@/view/index";
 
 // const FuncEffect: React.FC = () => {
 //   const [count, setCount] = useState(0);
@@ -32,7 +33,7 @@ const App: React.FC = () => {
   const [isVisible, steIsVisible] = useState(true);
   // return <ThemeContext />;
   // return <UseFefs></UseFefs>;
-  return <Effect></Effect>;
+  // return <Effect></Effect>;
   // return (
   //   <div>
   //     <button onClick={() => steIsVisible(!isVisible)}>
@@ -42,6 +43,7 @@ const App: React.FC = () => {
   //   </div>
   // );
   // return <FuncEffect />;
+  return <View/>
 };
 
 // 发布订阅模型
