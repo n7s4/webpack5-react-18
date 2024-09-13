@@ -54,6 +54,7 @@
   },
   "dependencies": {
     "core-js-pure": "^3.38.1",
+    "html2canvas": "^1.4.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "thread-loader": "^4.0.2"
