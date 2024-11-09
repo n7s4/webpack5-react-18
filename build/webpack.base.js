@@ -49,13 +49,14 @@ module.exports = {
         ],
       },
       {
-        test: /.scss$/, //匹配所有的 scss 文件
+        test: /\.scss$/, //匹配所有的 scss 文件
         include: [path.resolve(__dirname, "../src")],
         use: [
           isDev ? "style-loader" : MiniCssExtractPlugin.loader, // 开发环境使用style-looader,打包模式抽离css
           "css-loader",
+
+          "sass-loader",
           "postcss-loader",
-          "scss-loader",
         ],
       },
       {

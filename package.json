@@ -1,5 +1,6 @@
 {
   "name": "webpack5-react-18",
+  "homepage": ".",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -42,9 +43,12 @@
     "postcss-loader": "^8.1.1",
     "purgecss-webpack-plugin": "^6.0.0",
     "react-refresh": "^0.14.2",
+    "sass-loader": "^16.0.3",
+    "scss": "^0.2.4",
     "scss-loader": "^0.0.1",
     "speed-measure-webpack-plugin": "^1.5.0",
     "style-loader": "^4.0.0",
+    "styled-components": "^6.1.13",
     "terser-webpack-plugin": "^5.3.10",
     "webpack": "^5.93.0",
     "webpack-bundle-analyzer": "^4.10.2",
@@ -53,10 +57,14 @@
     "webpack-merge": "^6.0.1"
   },
   "dependencies": {
+    "@types/three": "^0.169.0",
     "core-js-pure": "^3.38.1",
     "html2canvas": "^1.4.1",
     "react": "^18.3.1",
+    "react-app-rewire-alias": "^1.1.7",
+    "react-app-rewired": "^2.2.1",
     "react-dom": "^18.3.1",
-    "thread-loader": "^4.0.2"
+    "thread-loader": "^4.0.2",
+    "three": "^0.170.0"
   }
 }
