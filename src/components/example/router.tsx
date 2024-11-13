@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, RouterContext } from "@/router";
 import React from "react";
 import HelloThreejs from "@/components/Three";
+import HeoolPrimitives from "@/components/hello-primitives";
 const MyRouter = () => {
   return (
     <BrowserRouter>
@@ -14,7 +15,7 @@ const MyRouter = () => {
             <Route path="/" component={Home}></Route>
             <Route path="/about" component={About}></Route>
             <Route path="/users" component={Users}></Route> */}
-            <HelloThreejs />
+            <HeoolPrimitives />
           </>
         )}
       </RouterContext.Consumer>

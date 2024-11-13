@@ -7,6 +7,7 @@ import {
   Mesh,
   DirectionalLight,
   MeshPhongMaterial,
+  CylinderGeometry,
 } from "three";
 import ThreeStyle from "./style";
 
@@ -32,8 +33,19 @@ const HelloThreejs: FC = () => {
       // 创建场景
       const scene = new Scene();
 
-      // 创建几何体
-      const geometry = new BoxGeometry(1, 1, 1);
+      // 创建几何体 盒子
+      // const geometry = new BoxGeometry(1, 1, 1);
+      // 创建圆柱体
+      const geometry = new CylinderGeometry(
+        0.5,
+        0.5,
+        2,
+        8,
+        1,
+        false,
+        0,
+        0.3 * Math.PI
+      );
 
       //创建材质
       // const material = new MeshPhongMaterial({ color: 0x44aa88 });
