@@ -1,0 +1,12 @@
+.container {
+  height: 100%;
+}
+.header {
+  height: 8%;
+}
+.content {
+  height: 70%;
+}
+.footer {
+  height: 10%;
+}
